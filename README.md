@@ -34,24 +34,47 @@ The system is divided into 3 main roles:
 
 👑 Admin
 Full system access
+
 Manage users (students & instructors)
+
 Manage courses globally
+
 View all data and analytics
+
 👨‍🏫 Instructor
+
 Manage own courses only
+
 View enrolled students
+
 Create and manage exams
+
 Track student performance
+
 Instructor dashboard with analytics
+
 🎓 Student
+
 Browse enrolled courses
+
 Access course content
+
 Take exams
+
 View results and performance history
+
 📚 Core Features
+
 📌 Course Management System
-Create, update, delete courses
+
+Create, 
+
+update, 
+
+delete courses
+
 Assign courses to instructors
+
 Filter courses per instructor
 Course categories support
 Students enrollment system (Many-to-Many)
