@@ -20,6 +20,7 @@ class RolesAndPermissionsSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'view students']);
         Permission::firstOrCreate(['name' => 'view student reports']);
         Permission::firstOrCreate(['name' => 'manage courses']);
+        Permission::firstOrCreate(['name'=>'enroll course']);
 
 
         // إنشاء الأدوار
@@ -45,7 +46,9 @@ class RolesAndPermissionsSeeder extends Seeder
         'delete course',
         'view student reports'
     ]);
-        $studentRole->givePermissionTo([]);
+        $studentRole->givePermissionTo([
+            'enroll course'
+            ]);
 
       
     }

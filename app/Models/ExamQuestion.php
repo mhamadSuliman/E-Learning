@@ -15,6 +15,6 @@ class ExamQuestion extends Model
         return $this->belongsTo(Exam::class,'exam_courses_id');
     }
     public function answers(){
-        return $this->hasMany(ExamAnswer::class,'exam_answers');
+        return $this->hasMany(ExamAnswer::class,'question_id');//كانت قبل exam_answers 
     }
 }

@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('exam_attempts', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('exam_id')->onDelete('cascade');
+            $table->foreignId('exam_id')->constrained('exam_courses')->onDelete('cascade');//هون ضفت كونستريند
             $table->foreignId('student_id')->constrained('users')->onDelete('cascade');
             $table->timestamp('started_at')->nullable();
             $table->timestamp('ended_at')->nullable();

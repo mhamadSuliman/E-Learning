@@ -26,8 +26,22 @@ Route::middleware('auth:sanctum','throttle:60,1')->group(function () {
         ->middleware('check.role:admin'); // البحث للأدمن فقط
 
     // الكورسات
-    Route::apiResource('courses', CourseController::class)
-        ->middleware('check.role:admin,instructor'); // الأدمن أو المدرس فقط
+    // Route::apiResource('courses', CourseController::class)
+    //     ->middleware('check.role:admin,instructor'); // الأدمن أو المدرس فقط
+
+    Route::get('/courses', [CourseController::class,'index']);
+
+Route::get('/courses/{course}', [CourseController::class,'show'])
+    ->middleware('check.course.permission:access');
+
+    Route::post('/courses', [CourseController::class,'store'])
+    ->middleware('permission:create course');//هادا لازم يكون بدون middleware لان لازم ضمن ال spatei انا معرف قبل انو ماحدا فيه ينشا كورس غير اذا كان ادمن او استاذ 
+
+    Route::put('/courses/{course}', [CourseController::class,'update'])
+    ->middleware('check.course.permission:edit');
+
+    Route::delete('/courses/{course}', [CourseController::class,'destroy'])
+    ->middleware('check.course.permission:edit');
 
     // الدروس (nested route) 
     Route::apiResource('courses.lessons', LessonController::class)
@@ -38,7 +52,7 @@ Route::middleware('auth:sanctum','throttle:60,1')->group(function () {
 
     // الطلاب المرتبطين بالأستاذ
     Route::get('/mystudents', [CourseController::class, 'myStudents'])
-        ->middleware('check.role:admin,instructor');
+        ->middleware('permission:view students');
 
     // تصنيفات الكورسات مفتوحة للجميع (يمكن تحط auth بعدين إذا بدك)
     Route::apiResource('categories', CourseCategoryController::class);
@@ -56,20 +70,20 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
 });
 
-Route::post('/courses/{course_id}/enroll', [CourseController::class, 'enroll'])
-    ->middleware('auth:sanctum');
+Route::post('/courses/{course}/enroll', [CourseController::class, 'enroll'])
+    ->middleware('auth:sanctum','permission:enroll course');
 
 
 // لازم يكون المستخدم عامل تسجيل دخول (middleware auth:sanctum)
 Route::middleware(['auth:sanctum', 'check.course.permission:edit'])->group(function () {
-    Route::post('/courses/{course_id}/exercises', [ExerciseController::class, 'store']);
-    Route::put('/courses/{course_id}/exercises/{exercise_id}', [ExerciseController::class, 'update']);
-    Route::delete('/courses/{course_id}/exercises/{exercise_id}', [ExerciseController::class, 'destroy']);
+    Route::post('/courses/{course}/exercises', [ExerciseController::class, 'store']);
+    Route::put('/courses/{course}/exercises/{exercise_id}', [ExerciseController::class, 'update']);
+    Route::delete('/courses/{course}/exercises/{exercise_id}', [ExerciseController::class, 'destroy']);
 });
 
 Route::middleware(['auth:sanctum', 'check.course.permission:access'])->group(function () {
-    Route::get('/courses/{course_id}/exercises', [ExerciseController::class, 'index']);
-    Route::get('/courses/{course_id}/exercises/{exercise_id}', [ExerciseController::class, 'show']);
+    Route::get('/courses/{course}/exercises', [ExerciseController::class, 'index']);
+    Route::get('/courses/{course}/exercises/{exercise_id}', [ExerciseController::class, 'show']);
 });
 Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/exercises/{exercise_id}/answer', [ExerciseAnswerController::class, 'store']);

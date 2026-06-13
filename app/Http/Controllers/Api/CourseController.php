@@ -9,7 +9,6 @@ use App\Models\Course;
 use App\Models\User;
 use App\Notifications\NewCourseNotification;
 use App\Notifications\NewStudentNotification;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 use Stripe\Stripe;
@@ -32,13 +31,6 @@ class coursecontroller extends Controller
     // ➕ إنشاء دورة جديدة
     public function store(StoreCorseRequest $request)
     {
-        $user = Auth::user();
-        if (!$user->hasRole('instructor')) {
-        return response()->json(['message' => 'غير مصرح لك بهذا الإجراء ❌'], 403);
-    }
-    if (!$user->can('create course')) {
-        return response()->json(['message' => 'ليس لديك صلاحية لاضافة كورسات  ❌'], 403);
-    }
     
         $validated = $request->validated();
 
@@ -59,17 +51,8 @@ class coursecontroller extends Controller
     // 🔍 عرض دورة واحدة
    public function show($id)
 {
-    $authUser = Auth::user();
-    $course = Course::with('instructor', 'students')->find($id);
 
-    if (!$course) {
-        return response()->json(['message' => 'الكورس غير موجود'], 404);
-    }
-
-    // التحقق من أن المستخدم مسجل في الكورس
-    if ($authUser->hasRole('student') && !$course->students->contains($authUser->id)) {
-        return response()->json(['message' => 'ليس لديك صلاحية الوصول لمحتوى هذا الكورس'], 403);
-    }
+    $course = Course::with('instructor')->find($id);
 
     return response()->json([
         'message' => 'الكورس متاح',
@@ -81,25 +64,7 @@ class coursecontroller extends Controller
     // ✏️ تعديل دورة
     public function update(UpdateCorseRequest $request, $id)
     {
-          $user = Auth::user();
            $course = course::find($id);
-
-        if (!$course) {
-            return response()->json([
-                'success' => false,
-                'message' => 'الدورة غير موجودة ❌'
-            ], 404);
-        }
-    if (!$user->can('update course')) {
-        return response()->json(['message' => 'ليس لديك صلاحية لتعديل كورسات  ❌'], 403);
-    }
-    
-        
-    if (!$user->hasRole('admin') && $course->instructor_id !== $user->id) {
-    return response()->json(['message' => 'غير مصرح لك بتعديل هذا الكورس ❌'], 403);
-}
-       
-
         $validated = $request->validated();
 
         $course->update($validated);
@@ -114,17 +79,7 @@ class coursecontroller extends Controller
     // 🗑️ حذف دورة
     public function destroy($id)
     {
-          $user = Auth::user();
           $course = Course::find($id);
-           if (!$course) {
-            return response()->json([
-                'success' => false,
-                'message' => 'الدورة غير موجودة ❌'
-            ], 404);
-        }
-    if (!$user->can('delete course')) {
-        return response()->json(['message' => 'ليس لديك صلاحية لحذف كورسات  ❌'], 403);
-    }
         $course->delete();
 
         return response()->json([
@@ -136,11 +91,6 @@ class coursecontroller extends Controller
   public function myStudents()
 {
     $user = Auth::user();
-    // تحقق أنه عنده الصلاحية 'view students' (اختياري بس يفضل)
-    if (!$user->can('view students')) {
-        return response()->json(['message' => 'ليس لديك صلاحية عرض الطلاب ❌'], 403);
-    }
-
     // جلب كل الطلاب المسجلين في كورسات هذا الأستاذ
     $students =$user->hasRole('admin')
     ? User::all():User::whereHas('enrolledCourses', function($query) use ($user) {
@@ -157,11 +107,6 @@ public function enroll($course_id)
 {
     $user = Auth::user();
     $course = Course::findOrFail($course_id);
-
-    // تأكد أنه المستخدم طالب
-    if (!$user->hasRole('student')) {
-        return response()->json(['message' => 'فقط الطلاب يمكنهم التسجيل في الكورس ❌'], 403);
-    }
 
     // تأكد أنه مو مسجل مسبقاً
     if ($course->students()->where('student_id', $user->id)->exists()) {

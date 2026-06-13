@@ -11,8 +11,8 @@ class CheckCoursePermission
 {
     public function handle(Request $request, Closure $next, $permissionType = 'access')
     {
-        $courseId = $request->route('course_id');
-        $course = Course::with('students')->find($courseId);
+        $course = $request->route('course');
+        $course = Course::find($course);
         $user = Auth::user();
 
         if (!$course) {
@@ -36,7 +36,9 @@ class CheckCoursePermission
         // الطالب لازم يكون مشترك أو ادمن أو مدرس الكورس
         return $user->hasRole('admin') ||
                $user->id == $course->instructor_id ||
-               $course->students->contains($user->id);
+               $course->students()
+       ->where('student_id',$user->id)
+       ->exists();
     }
 
     private function canEditCourse($user, $course)

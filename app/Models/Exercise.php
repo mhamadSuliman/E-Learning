@@ -16,4 +16,10 @@ class Exercise extends Model
     {
         return $this->belongsTo(Course::class, 'course_id');
     }
+    public function answers()
+{
+   return $this->hasMany(
+      ExerciseAnswer::class
+   );
+}
 }

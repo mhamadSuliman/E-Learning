@@ -7,6 +7,8 @@ use App\Http\Middleware\CheckRole;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Spatie\Permission\Exceptions\UnauthorizedException;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -28,5 +30,16 @@ return Application::configure(basePath: dirname(__DIR__))
     ]);
 })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
-    })->create();
+
+    $exceptions->render(function (
+        UnauthorizedException $e,
+        $request
+    ) {
+
+        return response()->json([
+            'message' => 'ليس لديك صلاحية لتنفيذ هذا الإجراء ❌'
+        ], 403);
+
+    });
+
+})->create();
