@@ -8,12 +8,7 @@ use App\Http\Requests\UpdateCorseRequest;
 use App\Models\Course;
 use App\Models\User;
 use App\Notifications\NewCourseNotification;
-use App\Notifications\NewStudentNotification;
 use Illuminate\Support\Facades\Auth;
-
-use Stripe\Stripe;
-use Stripe\Checkout\Session;
-
 
 class coursecontroller extends Controller
 {
@@ -26,7 +21,6 @@ class coursecontroller extends Controller
         'courses' => $courses
     ], 200);
 }
-
 
     // ➕ إنشاء دورة جديدة
     public function store(StoreCorseRequest $request)
@@ -59,9 +53,7 @@ class coursecontroller extends Controller
         'course' => $course
     ], 200);
 }
-
-
-    // ✏️ تعديل دورة
+ // ✏️ تعديل دورة
     public function update(UpdateCorseRequest $request, $id)
     {
            $course = course::find($id);
@@ -102,69 +94,4 @@ class coursecontroller extends Controller
         'students' => $students
     ]);
 }
-//اضافة طالب الى كورس معين 
-public function enroll($course_id)
-{
-    $user = Auth::user();
-    $course = Course::findOrFail($course_id);
-
-    // تأكد أنه مو مسجل مسبقاً
-    if ($course->students()->where('student_id', $user->id)->exists()) {
-        return response()->json(['message' => 'أنت مسجل بالفعل في هذا الكورس ⚠️'], 400);
-    }
-
-    // تسجيل الطالب في الكورس
-    $course->students()->attach($user->id);
-    // نجيب المدرس
-$instructor = $course->instructor;
-// نجيب كل الأدمن
-$admins = User::role('admin')->get();
-
-// نرسل الإشعار
-$instructor->notify(new NewStudentNotification($user, $course));
-foreach ($admins as $admin) {
-    $admin->notify(new NewStudentNotification($user, $course));
 }
-
-    return response()->json(['message' => 'تم التسجيل في الكورس بنجاح ✅']);
-}
-
-public function checkout($course_id)
-{
-    $user = Auth::user();
-    $course = Course::findOrFail($course_id);
-
-    if ($course->students()->where('student_id', $user->id)->exists()) {
-        return response()->json(['message' => 'أنت مسجل مسبقاً ⚠️'], 400);
-    }
-
-    Stripe::setApiKey(config('services.stripe.secret'));
-
-  $session = Session::create([
-    'payment_method_types' => ['card'],
-    'mode' => 'payment',
-    'line_items' => [[
-        'price_data' => [
-            'currency' => 'usd',
-            'product_data' => [
-                'name' => $course->title,
-            ],
-            'unit_amount' => $course->price * 100,
-        ],
-        'quantity' => 1,
-    ]],
-    'metadata' => [
-        'course_id' => $course->id,
-        'user_id' => $user->id,
-    ],
-    'success_url' => 'http://localhost:8000/dummy',
-    'cancel_url' => 'http://localhost:8000/cancel',
-]);
-
-    return response()->json([
-        'url' => $session->url
-    ]);
-}
-
-}
-

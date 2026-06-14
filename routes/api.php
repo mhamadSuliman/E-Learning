@@ -11,7 +11,6 @@ use App\Http\Controllers\Api\LessonController;
 use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\TestPaymentController;
 use App\Http\Controllers\Api\UserController;
-use App\Http\Controllers\Api\WebhookController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\StripeWebhookController;
 use Illuminate\Support\Facades\Route;
@@ -25,9 +24,6 @@ Route::middleware('auth:sanctum','throttle:60,1')->group(function () {
     Route::post('users/search', [UserController::class, 'search'])
         ->middleware('check.role:admin'); // البحث للأدمن فقط
 
-    // الكورسات
-    // Route::apiResource('courses', CourseController::class)
-    //     ->middleware('check.role:admin,instructor'); // الأدمن أو المدرس فقط
 
     Route::get('/courses', [CourseController::class,'index']);
 
@@ -35,7 +31,7 @@ Route::get('/courses/{course}', [CourseController::class,'show'])
     ->middleware('check.course.permission:access');
 
     Route::post('/courses', [CourseController::class,'store'])
-    ->middleware('permission:create course');//هادا لازم يكون بدون middleware لان لازم ضمن ال spatei انا معرف قبل انو ماحدا فيه ينشا كورس غير اذا كان ادمن او استاذ 
+    ->middleware('permission:create course');
 
     Route::put('/courses/{course}', [CourseController::class,'update'])
     ->middleware('check.course.permission:edit');
@@ -69,10 +65,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
 });
-
-Route::post('/courses/{course}/enroll', [CourseController::class, 'enroll'])
-    ->middleware('auth:sanctum','permission:enroll course');
-
 
 // لازم يكون المستخدم عامل تسجيل دخول (middleware auth:sanctum)
 Route::middleware(['auth:sanctum', 'check.course.permission:edit'])->group(function () {
@@ -128,18 +120,10 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/attempts/{exam_id}/result', [ExamAttemptController::class, 'getResult']);
 });
 
-// Route::middleware('auth:sanctum')->group(function () {
-    // Route::post('/courses/{course_id}/checkout', [PaymentController::class, 'checkout']);
     Route::get('/payment/success', [PaymentController::class, 'success']);
     Route::get('/payment/cancel', [PaymentController::class, 'cancel']);
 // });
 
-
-Route::post('/stripe/webhook', [WebhookController::class, 'handle']);
-
- Route::middleware('auth:sanctum')->post('/courses/{course}/checkout', [CourseController::class, 'checkout']);
-
 Route::middleware('auth:sanctum')->post('/test-payment/{course}', [TestPaymentController::class, 'checkout']);
 Route::post('/stripe/webhook', [StripeWebhookController::class, 'handle']);
 
-//انشات التمرين ضل عليك تنشا جدول للاجابة لكل طالب مشان يتخزن فيه اجابتو ويتاكد اذا صح او لا

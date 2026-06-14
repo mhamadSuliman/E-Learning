@@ -3,9 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\Course;
-use App\Models\Payment;
 use Illuminate\Support\Facades\Auth;
 use Stripe\Stripe;
 use Stripe\Checkout\Session;
@@ -40,34 +38,10 @@ class PaymentController extends Controller
         ]);
     }
 
-    public function success(Request $request)
-    {
-        $user = Auth::user();
-        $course = Course::findOrFail($request->course_id);
-
-        // تسجيل الطالب
-        $course->students()->syncWithoutDetaching([$user->id]);
-
-        // حفظ الدفع
-        Payment::create([
-            'user_id' => $user->id,
-            'course_id' => $course->id,
-            'amount' => $course->price,
-            'status' => 'paid'
-        ]);
-
-        // إشعار
-        $user->notify(new \App\Notifications\PaymentSuccessNotification($course));
-
-        return response()->json([
-            'message' => 'تم الدفع بنجاح ✅'
-        ]);
-    }
-
-    public function cancel()
-    {
-        return response()->json([
-            'message' => 'تم إلغاء الدفع ❌'
-        ]);
-    }
+    public function success()
+{
+    return response()->json([
+        'message'=>'تم الدفع بنجاح، سيتم تفعيل الكورس خلال لحظات'
+    ]);
+}
 }
