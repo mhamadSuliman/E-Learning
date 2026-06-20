@@ -12,7 +12,10 @@ class CheckCoursePermission
     public function handle(Request $request, Closure $next, $permissionType = 'access')
     {
         $course = $request->route('course');
-        $course = Course::find($course);
+
+     if (!$course instanceof Course) {
+     $course = Course::find($course);
+        }
         $user = Auth::user();
 
         if (!$course) {

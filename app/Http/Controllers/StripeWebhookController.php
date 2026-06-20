@@ -11,7 +11,7 @@ use App\Models\Payment;
 class StripeWebhookController extends Controller
 {
   
-    public function handle(Request $request)
+   public function handle(Request $request)
 {
     $payload = $request->getContent();
 
@@ -21,44 +21,47 @@ class StripeWebhookController extends Controller
         env('STRIPE_WEBHOOK_SECRET')
     );
 
-    if ($event->type==='checkout.session.completed') {
+    if ($event->type === 'checkout.session.completed') {
 
-        $session=$event->data->object;
+        $session = $event->data->object;
 
-        $user=User::find(
+        $user = User::find(
             $session->metadata->user_id
         );
 
-        $course=Course::find(
+        $course = Course::find(
             $session->metadata->course_id
         );
 
-        if($user && $course){
+        if ($user && $course) {
 
-            if(
-                !$course->students()
-                ->where('student_id',$user->id)
-                ->exists()
-            ){
-
-                $course->students()
-                ->attach($user->id);
-
-                Payment::create([
-                    'user_id'=>$user->id,
-                    'course_id'=>$course->id,
-                    'amount'=>$course->price,
-                    'status'=>'paid',
-                    'payment_id'=>$session->payment_intent
+            // تسجيل الطالب (مرة واحدة فقط)
+            $course->students()
+                ->syncWithoutDetaching([
+                    $user->id
                 ]);
 
-            }
+            // حفظ الدفع (مرة واحدة فقط)
+            if (
+                !Payment::where(
+                    'payment_id',
+                    $session->payment_intent
+                )->exists()
+            ) {
 
+                Payment::create([
+                    'user_id' => $user->id,
+                    'course_id' => $course->id,
+                    'amount' => $course->price,
+                    'status' => 'paid',
+                    'payment_id' => $session->payment_intent
+                ]);
+            }
         }
     }
 
     return response()->json([
-        'success'=>true
+        'success' => true
     ]);
 }
 }

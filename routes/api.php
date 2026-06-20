@@ -16,7 +16,7 @@ use App\Http\Controllers\StripeWebhookController;
 use Illuminate\Support\Facades\Route;
 
 // Middleware auth:sanctum لجميع الـ routes المحمية
-Route::middleware('auth:sanctum','throttle:60,1')->group(function () {
+Route::middleware('auth:sanctum', 'throttle:60,1')->group(function () {
 
     // المستخدمين
     Route::apiResource('users', UserController::class)
@@ -25,26 +25,58 @@ Route::middleware('auth:sanctum','throttle:60,1')->group(function () {
         ->middleware('check.role:admin'); // البحث للأدمن فقط
 
 
-    Route::get('/courses', [CourseController::class,'index']);
+    Route::get('/courses', [CourseController::class, 'index']);
 
-Route::get('/courses/{course}', [CourseController::class,'show'])
-    ->middleware('check.course.permission:access');
+    Route::get('/courses/{course}', [CourseController::class, 'show'])
+        ->middleware('check.course.permission:access');
 
-    Route::post('/courses', [CourseController::class,'store'])
-    ->middleware('permission:create course');
+    Route::post('/courses', [CourseController::class, 'store'])
+        ->middleware('permission:create course');
 
-    Route::put('/courses/{course}', [CourseController::class,'update'])
-    ->middleware('check.course.permission:edit');
+    Route::put('/courses/{course}', [CourseController::class, 'update'])
+        ->middleware('check.course.permission:edit');
 
-    Route::delete('/courses/{course}', [CourseController::class,'destroy'])
-    ->middleware('check.course.permission:edit');
+    Route::delete('/courses/{course}', [CourseController::class, 'destroy'])
+        ->middleware('check.course.permission:edit');
 
-    // الدروس (nested route) 
-    Route::apiResource('courses.lessons', LessonController::class)
-        ->middleware([
-            'check.role:admin,instructor',        // الأدمن أو المدرس
-            'check.course.ownership'              // للتحقق من ملكية الكورس إذا كان مدرس
-        ]);
+    // عرض دروس كورس
+    Route::get(
+        '/courses/{course}/lessons',
+        [LessonController::class, 'index']
+    )->middleware([
+        'auth:sanctum',
+        'check.course.permission:access'
+    ]);
+
+    // إضافة درس
+    Route::post(
+        '/courses/{course}/lessons',
+        [LessonController::class, 'store']
+    )->middleware([
+        'auth:sanctum',
+        'permission:manage courses',
+        'check.course.permission:edit'
+    ]);
+
+    // تعديل درس
+    Route::put(
+        '/courses/{course}/lessons/{lesson_id}',
+        [LessonController::class, 'update']
+    )->middleware([
+        'auth:sanctum',
+        'permission:manage courses',
+        'check.course.permission:edit'
+    ]);
+
+    // حذف درس
+    Route::delete(
+        '/courses/{course}/lessons/{lesson_id}',
+        [LessonController::class, 'destroy']
+    )->middleware([
+        'auth:sanctum',
+        'permission:manage courses',
+        'check.course.permission:edit'
+    ]);
 
     // الطلاب المرتبطين بالأستاذ
     Route::get('/mystudents', [CourseController::class, 'myStudents'])
@@ -85,45 +117,67 @@ Route::middleware(['auth:sanctum'])->group(function () {
 Route::middleware(['auth:sanctum'])->group(function () {
 
     // 🎓 الامتحانات التابعة لكورس معيّن
-    Route::prefix('courses/{course_id}')->group(function () {
+    Route::prefix('courses/{course}')->group(function () {
 
         // --- الامتحانات ---
         Route::get('/exams', [ExamController::class, 'index'])->middleware('check.course.permission:access');         // عرض كل الامتحانات ضمن كورس
         Route::post('/exams', [ExamController::class, 'store'])->middleware('check.course.permission:edit');        // إنشاء امتحان جديد
         Route::get('/exams/{exam_id}', [ExamController::class, 'show'])->middleware('check.course.permission:access'); // عرض امتحان بالتفصيل
         Route::delete('/exams/{exam_id}', [ExamController::class, 'destroy'])->middleware('check.course.permission:edit'); // حذف امتحان
+        Route::put('/exams/{exam_id}', [ExamController::class, 'update'])->middleware('check.course.permission:edit');
 
         // --- الأسئلة ضمن الامتحان ---
         Route::get('/exams/{exam_id}/questions', [ExamQuestionController::class, 'index'])->middleware('check.course.permission:access');   // عرض الأسئلة
         Route::post('/exams/{exam_id}/questions', [ExamQuestionController::class, 'store'])->middleware('check.course.permission:edit');  // إضافة سؤال
         Route::get('/exams/{exam_id}/questions/{question_id}', [ExamQuestionController::class, 'show'])->middleware('check.course.permission:access'); // عرض سؤال محدد
         Route::delete('/exams/{exam_id}/questions/{question_id}', [ExamQuestionController::class, 'destroy'])->middleware('check.course.permission:edit'); // حذف سؤال
+        Route::put('/exams/{exam_id}/questions/{question_id}', [ExamQuestionController::class, 'update'])->middleware('check.course.permission:edit');
 
 
-        
+        // بدء محاولة جديدة لامتحان معيّن
+        Route::post(
+            '/exams/{exam_id}/attempts/start',
+            [ExamAttemptController::class, 'startAttempt']
+        )->middleware('check.course.permission:access');
+
+        // إرسال إجابة لسؤال ضمن المحاولة
+        Route::post(
+            '/exams/{exam_id}/attempts/{attempt_id}/answer',
+            [ExamAttemptController::class, 'submitAnswer']
+        )->middleware('check.course.permission:access');
+
+        // تسليم الامتحان (إنهاء المحاولة)
+        Route::post(
+            '/exams/{exam_id}/attempts/{attempt_id}/submit',
+            [ExamAttemptController::class, 'submitAttempt']
+        )->middleware('check.course.permission:access');
+
+        // عرض نتيجة محاولة معيّنة
+        Route::get(
+            '/exams/{exam_id}/result',
+            [ExamAttemptController::class, 'getResult']
+        )->middleware('check.course.permission:access');
     });
-
 });
 // 🎓 راوتات إدارة المحاولات الخاصة بالامتحانات
-Route::middleware(['auth:sanctum'])->group(function () {
+// Route::middleware(['auth:sanctum'])->group(function () {
 
-    // بدء محاولة جديدة لامتحان معيّن
-    Route::post('/exams/{exam_id}/attempts/start', [ExamAttemptController::class, 'startAttempt']);
+//     // بدء محاولة جديدة لامتحان معيّن
+//     Route::post('/exams/{exam_id}/attempts/start', [ExamAttemptController::class, 'startAttempt']);
 
-    // إرسال إجابة لسؤال ضمن المحاولة
-    Route::post('/attempts/{attempt_id}/answer', [ExamAttemptController::class, 'submitAnswer']);
+//     // إرسال إجابة لسؤال ضمن المحاولة
+//     Route::post('/attempts/{attempt_id}/answer', [ExamAttemptController::class, 'submitAnswer']);
 
-    // تسليم الامتحان (إنهاء المحاولة)
-    Route::post('/attempts/{attempt_id}/submit', [ExamAttemptController::class, 'submitAttempt']);
+//     // تسليم الامتحان (إنهاء المحاولة)
+//     Route::post('/attempts/{attempt_id}/submit', [ExamAttemptController::class, 'submitAttempt']);
 
-    // عرض نتيجة محاولة معيّنة
-    Route::get('/attempts/{exam_id}/result', [ExamAttemptController::class, 'getResult']);
-});
+//     // عرض نتيجة محاولة معيّنة
+//     Route::get('/attempts/{exam_id}/result', [ExamAttemptController::class, 'getResult']);
+// });
 
-    Route::get('/payment/success', [PaymentController::class, 'success']);
-    Route::get('/payment/cancel', [PaymentController::class, 'cancel']);
+Route::get('/payment/success', [PaymentController::class, 'success']);
+Route::get('/payment/cancel', [PaymentController::class, 'cancel']);
 // });
 
 Route::middleware('auth:sanctum')->post('/test-payment/{course}', [TestPaymentController::class, 'checkout']);
 Route::post('/stripe/webhook', [StripeWebhookController::class, 'handle']);
-

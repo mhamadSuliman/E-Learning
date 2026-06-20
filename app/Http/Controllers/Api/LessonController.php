@@ -3,10 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreLessonRequest;
+use App\Http\Requests\UpdateLessonRequest;
 use App\Models\Lesson;
 use App\Models\Course;
 use App\Notifications\NewLessonNotification;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
@@ -17,10 +18,6 @@ class LessonController extends Controller
     {
         $user = Auth::user();
         $course = Course::with('lessons')->findOrFail($course_id);
-
-        if ($user->hasRole('student') && !$course->students->contains($user->id)) {
-            return response()->json(['message' => 'غير مصرح لك بمشاهدة دروس هذا الكورس ❌'], 403);
-        }
         $lessons = $course->lessons()->orderBy('order')->get();
 
         return response()->json([
@@ -33,17 +30,10 @@ class LessonController extends Controller
     /**
      * إضافة درس جديد
      */
-    public function store(Request $request, $course_id)
+    public function store(StoreLessonRequest $request, $course_id)
     {
-        $user = Auth::user();
         $course = Course::findOrFail($course_id);
-        $validated = $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'video' => 'nullable|file|mimes:mp4,mov,avi|max:51200',
-            'file' => 'nullable|file|mimes:pdf,doc,docx,ppt,pptx,zip|max:10240',
-            'order' => 'nullable|integer'
-        ]);
+       $validated = $request->validated();
 
         $videoPath = $request->hasFile('video') 
             ? $request->file('video')->store('lessons/videos', 'public') 
@@ -78,22 +68,15 @@ class LessonController extends Controller
     /**
      * تعديل درس
      */
-    public function update(Request $request, $course_id, $lesson_id)
+    public function update(UpdateLessonRequest  $request, $course_id, $lesson_id)
     {
-        $user = Auth::user();
         $lesson = Lesson::findOrFail($lesson_id);
         $course = Course::findOrFail($course_id);
 
         if ($lesson->course_id !== $course->id) {
             return response()->json(['message' => 'الدرس لا ينتمي لهذا الكورس ❌'], 400);
         }
-        $validated = $request->validate([
-            'title' => 'sometimes|string|max:255',
-            'description' => 'nullable|string',
-            'video' => 'nullable|file|mimes:mp4,mov,avi|max:51200',
-            'file' => 'nullable|file|mimes:pdf,doc,docx,ppt,pptx,zip|max:10240',
-            'order' => 'nullable|integer'
-        ]);
+        $validated =$request->validated();
 
         if ($request->hasFile('video')) {
             if ($lesson->video_url) {
@@ -122,7 +105,6 @@ class LessonController extends Controller
      */
     public function destroy($course_id, $lesson_id)
     {
-        $user = Auth::user();
         $lesson = Lesson::findOrFail($lesson_id);
         $course = Course::findOrFail($course_id);
 

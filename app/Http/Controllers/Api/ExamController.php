@@ -3,9 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreExamRequest;
+use App\Http\Requests\UpdateExamRequest;
 use App\Models\Exam;
 use App\Models\Course;
-use Illuminate\Http\Request;
 
 class ExamController extends Controller
 {
@@ -13,11 +14,6 @@ class ExamController extends Controller
     public function index($course_id)
     {
         $course = Course::with('exams')->find($course_id);
-
-        if (!$course) {
-            return response()->json(['message' => 'الكورس غير موجود ❌'], 404);
-        }
-
         return response()->json([
             'course' => $course->title,
             'exams' => $course->exams
@@ -25,22 +21,10 @@ class ExamController extends Controller
     }
 
     // إنشاء امتحان جديد
-    public function store(Request $request, $courses_id)
+    public function store(StoreExamRequest $request, $course_id)
     {
-        $course = Course::find($courses_id);
-
-        if (!$course) {
-            return response()->json(['message' => 'الكورس غير موجود ❌'], 404);
-        }
-
-       $data = $request->validate([
-    'title' => 'required|string',
-    'description' => 'nullable|string',
-    'duration' => 'nullable|integer',
-]);
-
-$exam = $course->exams()->create($data);
-
+        $course = Course::findOrFail($course_id);
+        $exam = $course->exams()->create($request->validated());
 
         return response()->json([
             'message' => 'تم إنشاء الامتحان بنجاح ✅',
@@ -58,6 +42,22 @@ $exam = $course->exams()->create($data);
         }
 
         return response()->json($exam);
+    }
+
+    public function update(UpdateExamRequest $request, $course_id, $exam_id)
+    {
+        $exam = Exam::where('course_id', $course_id)->where('id', $exam_id)->first();
+        if (!$exam) {
+            return response()->json([
+                'message' => 'الامتحان غير موجود ❌'
+            ], 404);
+        }
+        $exam->update($request->validated());
+
+        return response()->json([
+            'message' => 'تم تعديل الامتحان بنجاح ✅',
+            'exam' => $exam
+        ]);
     }
 
     // حذف امتحان
